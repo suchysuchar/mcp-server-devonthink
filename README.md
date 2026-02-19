@@ -135,6 +135,33 @@ Add to your Claude configuration:
 }
 ```
 
+### Security Hardening (Single Test Database)
+
+For safer testing with MCP clients, configure a single-database lock and restricted tool modes:
+
+- `DEVONTHINK_ALLOWED_DATABASE_UUID`: UUID of the only DEVONthink database this server may access
+- `DEVONTHINK_MODE`: `read_only` (default), `read_plus_safe_edit`, or `full_access`
+- `DEVONTHINK_ALLOWED_WRITE_TOOLS`: comma-separated tool allowlist for `read_plus_safe_edit`
+- `DEVONTHINK_ENABLE_AI_TOOLS`: `true` or `false` (default `false`)
+- `DEVONTHINK_ENABLE_SSE`: `true` to enable SSE transport (default disabled)
+- Profile changes are applied at process startup (update env vars and restart the MCP server)
+
+Recommended start:
+
+```bash
+DEVONTHINK_ALLOWED_DATABASE_UUID="<your-test-db-uuid>" \
+DEVONTHINK_MODE="read_only" \
+DEVONTHINK_ENABLE_AI_TOOLS="false" \
+node dist/index.js
+```
+
+Guard events are logged to console for auditability:
+
+```
+[GUARD] 2026-02-19T14:30:00Z | BLOCKED | delete_record | reason: tool not in allowed list
+[GUARD] 2026-02-19T14:31:00Z | ALLOWED | rename_record | uuid: ABC-123
+```
+
 ## Implementation Details
 
 - Uses JXA (JavaScript for Automation) to control DEVONthink via AppleScript APIs

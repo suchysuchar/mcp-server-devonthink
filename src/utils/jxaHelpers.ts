@@ -3,6 +3,11 @@
  * These functions are injected into JXA scripts to provide common functionality
  */
 
+const allowedDatabaseUuidForHelper = (process.env.DEVONTHINK_ALLOWED_DATABASE_UUID || "")
+	.trim()
+	.replace(/\\/g, "\\\\")
+	.replace(/"/g, '\\"');
+
 /**
  * Helper function to lookup a record by UUID
  */
@@ -191,7 +196,17 @@ function isVersion41OrLater(theApp) {
  */
 export const getDatabaseHelper = `
 function getDatabase(theApp, databaseName) {
+  const forcedDatabaseUuid = "${allowedDatabaseUuidForHelper}";
+
   if (!databaseName) {
+    if (forcedDatabaseUuid) {
+      const databasesForForcedLookup = theApp.databases();
+      const forcedDatabase = databasesForForcedLookup.find(db => db.uuid() === forcedDatabaseUuid);
+      if (!forcedDatabase) {
+        throw new Error("Allowed database is not open: " + forcedDatabaseUuid);
+      }
+      return forcedDatabase;
+    }
     return theApp.currentDatabase();
   }
 
@@ -199,6 +214,9 @@ function getDatabase(theApp, databaseName) {
   const found = databases.find(db => db.name() === databaseName);
   if (!found) {
     throw new Error("Database not found: " + databaseName);
+  }
+  if (forcedDatabaseUuid && found.uuid() !== forcedDatabaseUuid) {
+    throw new Error("Database is outside allowed scope: " + databaseName);
   }
   return found;
 }`;

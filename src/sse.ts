@@ -3,6 +3,14 @@ import express from "express";
 import { createServer } from "./devonthink.js";
 
 async function main() {
+	const sseEnabled = process.env.DEVONTHINK_ENABLE_SSE === "true";
+	if (!sseEnabled) {
+		console.error(
+			"SSE transport is disabled. Set DEVONTHINK_ENABLE_SSE=true only for controlled local debugging.",
+		);
+		process.exit(1);
+	}
+
 	const app = express();
 
 	const { server, cleanup } = await createServer();
