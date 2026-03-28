@@ -39,6 +39,12 @@ import { askAiAboutDocumentsTool } from "./tools/ai/askAiAboutDocuments.js";
 import { checkAIHealthTool } from "./tools/ai/checkAIHealth.js";
 import { createSummaryDocumentTool } from "./tools/ai/createSummaryDocument.js";
 import { getToolDocumentationTool } from "./tools/ai/getToolDocumentation.js";
+import {
+	getAuditLogStatus,
+	serializeErrorForAudit,
+	summarizeForAudit,
+	writeAuditEvent,
+} from "./utils/auditLog.js";
 
 type SecurityMode = "read_only" | "read_plus_safe_edit" | "full_access";
 
@@ -126,11 +132,20 @@ function logGuardBlocked(toolName: string, reason: string, uuid?: string): void 
 	console.error(
 		`[GUARD] ${guardTimestamp()} | BLOCKED | ${toolName} | reason: ${reason}${uuidPart}`,
 	);
+	writeAuditEvent("guard_blocked", {
+		tool: toolName,
+		reason,
+		uuid,
+	});
 }
 
 function logGuardAllowed(toolName: string, uuid?: string): void {
 	const uuidPart = uuid ? ` | uuid: ${uuid}` : "";
 	console.log(`[GUARD] ${guardTimestamp()} | ALLOWED | ${toolName}${uuidPart}`);
+	writeAuditEvent("guard_allowed", {
+		tool: toolName,
+		uuid,
+	});
 }
 
 function parseBooleanEnv(value: string | undefined, defaultValue: boolean): boolean {
@@ -138,10 +153,20 @@ function parseBooleanEnv(value: string | undefined, defaultValue: boolean): bool
 		return defaultValue;
 	}
 	const normalized = value.trim().toLowerCase();
-	if (normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on") {
+	if (
+		normalized === "1" ||
+		normalized === "true" ||
+		normalized === "yes" ||
+		normalized === "on"
+	) {
 		return true;
 	}
-	if (normalized === "0" || normalized === "false" || normalized === "no" || normalized === "off") {
+	if (
+		normalized === "0" ||
+		normalized === "false" ||
+		normalized === "no" ||
+		normalized === "off"
+	) {
 		return false;
 	}
 	return defaultValue;
@@ -366,6 +391,7 @@ async function applySecurityGuards(
 }
 
 export const createServer = async () => {
+	const auditLogStatus = getAuditLogStatus();
 	const securityMode = parseMode(process.env.DEVONTHINK_MODE);
 	const configuredWriteTools = parseCsvToSet(process.env.DEVONTHINK_ALLOWED_WRITE_TOOLS);
 	const allowedWriteTools =
@@ -447,6 +473,16 @@ export const createServer = async () => {
 	];
 
 	const exposedTools = tools.filter((tool) => isToolEnabled(tool.name, securityConfig));
+	writeAuditEvent("server_config", {
+		security: {
+			mode: securityConfig.mode,
+			allowedDatabaseUuid: securityConfig.allowedDatabaseUuid,
+			enableAiTools: securityConfig.enableAiTools,
+			allowedWriteTools: Array.from(securityConfig.allowedWriteTools),
+		},
+		exposedTools: exposedTools.map((tool) => tool.name),
+		auditLog: auditLogStatus,
+	});
 
 	server.setRequestHandler(ListToolsRequestSchema, async () => {
 		return { tools: exposedTools };
@@ -468,14 +504,25 @@ export const createServer = async () => {
 		const { name, arguments: args = {} } = request.params;
 		const rawArgs = asObjectArgs(args);
 		const requestedUuid = firstUuid(rawArgs);
+		const startedAt = Date.now();
 
 		const tool = tools.find((t) => t.name === name);
 
 		if (!tool) {
+			writeAuditEvent("tool_call_rejected", {
+				tool: name,
+				reason: "unknown_tool",
+				argsSummary: summarizeForAudit(rawArgs),
+			});
 			throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${name}`);
 		}
 
 		if (!isToolEnabled(name, securityConfig)) {
+			writeAuditEvent("tool_call_rejected", {
+				tool: name,
+				reason: "disabled_by_security_policy",
+				argsSummary: summarizeForAudit(rawArgs),
+			});
 			logGuardBlocked(name, "tool not in allowed list", requestedUuid);
 			throw new McpError(
 				ErrorCode.InvalidRequest,
@@ -484,16 +531,30 @@ export const createServer = async () => {
 		}
 
 		if (typeof tool.run !== "function") {
+			writeAuditEvent("tool_call_rejected", {
+				tool: name,
+				reason: "missing_run_function",
+				argsSummary: summarizeForAudit(rawArgs),
+			});
 			throw new McpError(ErrorCode.InternalError, `Tool '${name}' has no run function.`);
 		}
 
 		try {
-			if (name === "current_database" && securityConfig.allowedDatabaseUuid && allowedDatabaseInfo) {
+			writeAuditEvent("tool_call_started", {
+				tool: name,
+				argsSummary: summarizeForAudit(rawArgs),
+			});
+
+			if (
+				name === "current_database" &&
+				securityConfig.allowedDatabaseUuid &&
+				allowedDatabaseInfo
+			) {
 				const forcedCurrentDatabaseResult = {
 					success: true,
 					database: allowedDatabaseInfo,
 				};
-				return {
+				const response = {
 					content: [
 						{
 							type: "text",
@@ -501,6 +562,13 @@ export const createServer = async () => {
 						},
 					],
 				};
+				writeAuditEvent("tool_call_completed", {
+					tool: name,
+					durationMs: Date.now() - startedAt,
+					argsSummary: summarizeForAudit(rawArgs),
+					resultSummary: summarizeForAudit(forcedCurrentDatabaseResult),
+				});
+				return response;
 			}
 
 			const scopedArgs = await applySecurityGuards(
@@ -511,10 +579,13 @@ export const createServer = async () => {
 			);
 
 			const result = await tool.run(scopedArgs);
-			if (securityConfig.mode === "read_plus_safe_edit" && securityConfig.allowedWriteTools.has(name)) {
+			if (
+				securityConfig.mode === "read_plus_safe_edit" &&
+				securityConfig.allowedWriteTools.has(name)
+			) {
 				logGuardAllowed(name, firstUuid(scopedArgs) || firstUuid(result));
 			}
-			return {
+			const response = {
 				content: [
 					{
 						type: "text",
@@ -522,7 +593,20 @@ export const createServer = async () => {
 					},
 				],
 			};
+			writeAuditEvent("tool_call_completed", {
+				tool: name,
+				durationMs: Date.now() - startedAt,
+				argsSummary: summarizeForAudit(scopedArgs),
+				resultSummary: summarizeForAudit(result),
+			});
+			return response;
 		} catch (error) {
+			writeAuditEvent("tool_call_failed", {
+				tool: name,
+				durationMs: Date.now() - startedAt,
+				argsSummary: summarizeForAudit(rawArgs),
+				error: serializeErrorForAudit(error),
+			});
 			throw error instanceof McpError
 				? error
 				: new McpError(

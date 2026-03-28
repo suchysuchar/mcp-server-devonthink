@@ -144,6 +144,7 @@ For safer testing with MCP clients, configure a single-database lock and restric
 - `DEVONTHINK_ALLOWED_WRITE_TOOLS`: comma-separated tool allowlist for `read_plus_safe_edit`
 - `DEVONTHINK_ENABLE_AI_TOOLS`: `true` or `false` (default `false`)
 - `DEVONTHINK_ENABLE_SSE`: `true` to enable SSE transport (default disabled)
+- `DEVONTHINK_AUDIT_LOG_FILE`: optional path to a persistent JSONL audit log for tool calls, guard decisions, startup, shutdown, and runtime errors
 - Profile changes are applied at process startup (update env vars and restart the MCP server)
 
 Recommended start:
@@ -160,6 +161,29 @@ Guard events are logged to console for auditability:
 ```
 [GUARD] 2026-02-19T14:30:00Z | BLOCKED | delete_record | reason: tool not in allowed list
 [GUARD] 2026-02-19T14:31:00Z | ALLOWED | rename_record | uuid: ABC-123
+```
+
+To persist debug history across multiple MCP sessions, set an audit log file:
+
+```bash
+DEVONTHINK_AUDIT_LOG_FILE="$HOME/Library/Logs/devonthink-mcp.audit.jsonl" \
+node dist/index.js
+```
+
+Each line is a JSON object. Typical events include:
+- `server_startup`
+- `server_config`
+- `tool_call_started`
+- `tool_call_completed`
+- `tool_call_failed`
+- `guard_blocked`
+- `guard_allowed`
+- `runtime_error`
+
+Example entry:
+
+```json
+{"timestamp":"2026-03-28T09:30:00.000Z","sessionId":"abc123","pid":12345,"event":"tool_call_failed","tool":"lookup_record","durationMs":12,"error":{"name":"McpError","message":"Record is outside allowed database scope"}}
 ```
 
 ## Implementation Details
