@@ -47,11 +47,13 @@ interface LookupResult {
 
 const lookupRecord = async (input: LookupRecordInput): Promise<LookupResult> => {
 	const { lookupType, value, tags, matchAnyTag, databaseName, limit = 50 } = input;
+	const allowedDatabaseUuid = process.env.DEVONTHINK_ALLOWED_DATABASE_UUID?.trim() || "";
 
 	const script = `
     (() => {
       const theApp = Application("${DEVONTHINK_APP_NAME}");
       theApp.includeStandardAdditions = true;
+      const forcedDatabaseUuid = ${JSON.stringify(allowedDatabaseUuid)};
 
       function getRecordType(record) {
         if (!record) return "unknown";
@@ -73,8 +75,27 @@ const lookupRecord = async (input: LookupRecordInput): Promise<LookupResult> => 
               error: "Database not found: ${databaseName}"
             });
           }
+        } else if (forcedDatabaseUuid) {
+          const databases = theApp.databases();
+          searchDatabase = databases.find(db => db.uuid() === forcedDatabaseUuid);
+          if (!searchDatabase) {
+            return JSON.stringify({
+              success: false,
+              error: "Allowed database is not open: " + forcedDatabaseUuid
+            });
+          }
         } else {
           searchDatabase = theApp.currentDatabase();
+        }
+
+        const searchDatabaseUuid =
+          searchDatabase && searchDatabase.uuid ? searchDatabase.uuid() : null;
+
+        if (forcedDatabaseUuid && searchDatabaseUuid !== forcedDatabaseUuid) {
+          return JSON.stringify({
+            success: false,
+            error: "Database is outside allowed scope"
+          });
         }
         
         let searchResults;
@@ -88,9 +109,31 @@ const lookupRecord = async (input: LookupRecordInput): Promise<LookupResult> => 
           case "path":
             searchResults = theApp.lookupRecordsWithPath("${value}", { in: searchDatabase });
             break;
-          case "url":
-            searchResults = theApp.lookupRecordsWithURL("${value}", { in: searchDatabase });
+          case "url": {
+            const urlValue = "${value}";
+            const dtPrefix = "x-devonthink-item://";
+            if (urlValue.startsWith(dtPrefix)) {
+              const identifier = decodeURIComponent(urlValue.substring(dtPrefix.length));
+              const record = theApp.getRecordWithUuid(identifier);
+              if (record && record.exists()) {
+                const recordDatabase = record.database ? record.database() : null;
+                const recordDatabaseUuid =
+                  recordDatabase && recordDatabase.uuid ? recordDatabase.uuid() : null;
+                if (searchDatabaseUuid && recordDatabaseUuid !== searchDatabaseUuid) {
+                  return JSON.stringify({
+                    success: false,
+                    error: "Record is outside allowed database scope"
+                  });
+                }
+                searchResults = [record];
+              } else {
+                searchResults = [];
+              }
+            } else {
+              searchResults = theApp.lookupRecordsWithURL(decodeURIComponent(urlValue), { in: searchDatabase });
+            }
             break;
+          }
           case "comment":
             searchResults = theApp.lookupRecordsWithComment("${value}", { in: searchDatabase });
             break;
