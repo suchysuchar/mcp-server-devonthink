@@ -4,6 +4,7 @@ import { Tool, ToolSchema } from "@modelcontextprotocol/sdk/types.js";
 import { executeJxa } from "../applescript/execute.js";
 import { escapeStringForJXA, formatValueForJXA, isJXASafeString } from "../utils/escapeString.js";
 import { getRecordLookupHelpers } from "../utils/jxaHelpers.js";
+import { DEVONTHINK_APP_NAME } from "../utils/appConfig.js";
 
 const ToolInputSchema = ToolSchema.shape.inputSchema;
 type ToolInput = z.infer<typeof ToolInputSchema>;
@@ -39,7 +40,7 @@ const getRecordContent = async (input: GetRecordContentInput): Promise<GetRecord
 
 	const script = `
     (() => {
-      const theApp = Application("DEVONthink");
+      const theApp = Application("${DEVONTHINK_APP_NAME}");
       theApp.includeStandardAdditions = true;
       
       // Inject helper functions
@@ -72,7 +73,7 @@ const getRecordContent = async (input: GetRecordContentInput): Promise<GetRecord
         }
 
         let content;
-        const recordType = record.recordType();
+        const recordType = getRecordType(record);
 
         if (recordType === "markdown" || recordType === "txt" || recordType === "formatted note") {
             content = record.plainText();

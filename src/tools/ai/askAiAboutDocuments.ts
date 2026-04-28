@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { createDevonThinkTool } from "../base/DevonThinkTool.js";
 import { AI_ENGINES } from "./constants.js";
+import { DEVONTHINK_APP_NAME } from "../../utils/appConfig.js";
 
 const AskAiAboutDocumentsSchema = z
 	.object({
@@ -31,7 +32,7 @@ export const askAiAboutDocumentsTool = createDevonThinkTool({
 		const { documentUuids, question, temperature, model, engine } = input;
 
 		return helpers.wrapInTryCatch(`
-      const theApp = Application("DEVONthink");
+      const theApp = Application("${DEVONTHINK_APP_NAME}");
       theApp.includeStandardAdditions = true;
       
       // Check if DEVONthink is running

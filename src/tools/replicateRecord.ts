@@ -4,6 +4,7 @@ import { Tool, ToolSchema } from "@modelcontextprotocol/sdk/types.js";
 import { executeJxa } from "../applescript/execute.js";
 import { escapeStringForJXA, formatValueForJXA, isJXASafeString } from "../utils/escapeString.js";
 import { getRecordLookupHelpers, getDatabaseHelper, isGroupHelper } from "../utils/jxaHelpers.js";
+import { DEVONTHINK_APP_NAME } from "../utils/appConfig.js";
 
 const ToolInputSchema = ToolSchema.shape.inputSchema;
 type ToolInput = z.infer<typeof ToolInputSchema>;
@@ -80,7 +81,7 @@ const replicateRecord = async (input: ReplicateRecordInput): Promise<ReplicateRe
 
 	const script = `
     (() => {
-      const theApp = Application("DEVONthink");
+      const theApp = Application("${DEVONTHINK_APP_NAME}");
       theApp.includeStandardAdditions = true;
       
       // Inject helper functions
@@ -135,7 +136,7 @@ const replicateRecord = async (input: ReplicateRecordInput): Promise<ReplicateRe
         if (!isGroup(destinationGroup)) {
           return JSON.stringify({
             success: false,
-            error: "Destination UUID does not refer to a group. Type: " + destinationGroup.recordType()
+            error: "Destination UUID does not refer to a group. Type: " + getRecordType(destinationGroup)
           });
         }
         
@@ -179,7 +180,7 @@ const replicateRecord = async (input: ReplicateRecordInput): Promise<ReplicateRe
         result["replicatedRecord"]["name"] = replicatedRecord.name();
         result["replicatedRecord"]["path"] = replicatedRecord.path();
         result["replicatedRecord"]["location"] = replicatedRecord.location();
-        result["replicatedRecord"]["recordType"] = replicatedRecord.recordType();
+        result["replicatedRecord"]["recordType"] = getRecordType(replicatedRecord);
         
         return JSON.stringify(result);
       } catch (error) {

@@ -163,12 +163,23 @@ function getRecord(theApp, options) {
 }`;
 
 /**
+ * Helper to get record type (DT4 uses recordType(), DT3 uses type())
+ */
+export const getRecordTypeHelper = `
+function getRecordType(record) {
+  if (!record) return "unknown";
+  try { return record.recordType(); } catch (e) {}
+  try { return record.type(); } catch (e) {}
+  return "unknown";
+}`;
+
+/**
  * Helper to validate if a record is a group
  */
 export const isGroupHelper = `
 function isGroup(record) {
   if (!record) return false;
-  const type = record.recordType();
+  const type = getRecordType(record);
   return type === "group" || type === "smart group";
 }`;
 
@@ -234,8 +245,8 @@ function convertDevonthinkRecord(record) {
     converted["id"] = record.id();
     converted["uuid"] = record.uuid();
     converted["name"] = record.name();
-    converted["type"] = record.type();
-    converted["recordType"] = record.recordType();
+    converted["type"] = getRecordType(record);
+    converted["recordType"] = getRecordType(record);
     converted["location"] = record.location();
     converted["path"] = record.path();
     
@@ -284,6 +295,7 @@ function convertDevonthinkRecord(record) {
 export function getJXAHelpers(): string {
 	return `
     // JXA Helper Functions
+    ${getRecordTypeHelper}
     ${lookupByUuidHelper}
     ${lookupByIdHelper}
     ${lookupByPathHelper}
@@ -300,6 +312,7 @@ export function getJXAHelpers(): string {
  */
 export function getRecordLookupHelpers(): string {
 	return `
+    ${getRecordTypeHelper}
     ${lookupByUuidHelper}
     ${lookupByIdHelper}
     ${lookupByPathHelper}

@@ -4,6 +4,7 @@ import { Tool, ToolSchema } from "@modelcontextprotocol/sdk/types.js";
 import { executeJxa } from "../applescript/execute.js";
 import { escapeStringForJXA, isJXASafeString } from "../utils/escapeString.js";
 import { getRecordLookupHelpers } from "../utils/jxaHelpers.js";
+import { DEVONTHINK_APP_NAME } from "../utils/appConfig.js";
 
 const ToolInputSchema = ToolSchema.shape.inputSchema;
 type ToolInput = z.infer<typeof ToolInputSchema>;
@@ -41,7 +42,7 @@ const updateRecordContent = async (
 
 	const script = `
     (() => {
-      const theApp = Application("DEVONthink");
+      const theApp = Application("${DEVONTHINK_APP_NAME}");
       theApp.includeStandardAdditions = true;
       
       // Inject helper functions
@@ -64,7 +65,7 @@ const updateRecordContent = async (
         const record = lookupResult.record;
         
         // Get record type to determine which property to update
-        const recordType = record.recordType();
+        const recordType = getRecordType(record);
         const newContent = ${content ? `"${escapeStringForJXA(content)}"` : '""'};
         let updatedProperty = "";
         

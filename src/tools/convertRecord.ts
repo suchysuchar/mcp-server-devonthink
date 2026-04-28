@@ -4,6 +4,7 @@ import { Tool, ToolSchema } from "@modelcontextprotocol/sdk/types.js";
 import { executeJxa } from "../applescript/execute.js";
 import { escapeStringForJXA, formatValueForJXA, isJXASafeString } from "../utils/escapeString.js";
 import { getRecordLookupHelpers, getDatabaseHelper, isGroupHelper } from "../utils/jxaHelpers.js";
+import { DEVONTHINK_APP_NAME } from "../utils/appConfig.js";
 
 const ToolInputSchema = ToolSchema.shape.inputSchema;
 type ToolInput = z.infer<typeof ToolInputSchema>;
@@ -101,7 +102,7 @@ const convertRecord = async (input: ConvertRecordInput): Promise<ConvertRecordRe
 
 	const script = `
     (() => {
-      const theApp = Application("DEVONthink");
+      const theApp = Application("${DEVONTHINK_APP_NAME}");
       theApp.includeStandardAdditions = true;
       
       // Inject helper functions
@@ -158,7 +159,7 @@ const convertRecord = async (input: ConvertRecordInput): Promise<ConvertRecordRe
           if (!isGroup(destinationGroup)) {
             return JSON.stringify({
               success: false,
-              error: "Destination UUID does not refer to a group. Type: " + destinationGroup.recordType()
+              error: "Destination UUID does not refer to a group. Type: " + getRecordType(destinationGroup)
             });
           }
         }
@@ -196,7 +197,7 @@ const convertRecord = async (input: ConvertRecordInput): Promise<ConvertRecordRe
         result["convertedRecord"]["name"] = convertedRecord.name();
         result["convertedRecord"]["path"] = convertedRecord.path();
         result["convertedRecord"]["location"] = convertedRecord.location();
-        result["convertedRecord"]["recordType"] = convertedRecord.recordType();
+        result["convertedRecord"]["recordType"] = getRecordType(convertedRecord);
         result["convertedRecord"]["format"] = "${escapeStringForJXA(format)}";
         
         return JSON.stringify(result);

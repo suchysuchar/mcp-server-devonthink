@@ -2,6 +2,7 @@ import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { Tool, ToolSchema } from "@modelcontextprotocol/sdk/types.js";
 import { executeJxa } from "../applescript/execute.js";
+import { DEVONTHINK_APP_NAME } from "../utils/appConfig.js";
 
 const ToolInputSchema = ToolSchema.shape.inputSchema;
 type ToolInput = z.infer<typeof ToolInputSchema>;
@@ -50,10 +51,17 @@ const lookupRecord = async (input: LookupRecordInput): Promise<LookupResult> => 
 
 	const script = `
     (() => {
-      const theApp = Application("DEVONthink");
+      const theApp = Application("${DEVONTHINK_APP_NAME}");
       theApp.includeStandardAdditions = true;
       const forcedDatabaseUuid = ${JSON.stringify(allowedDatabaseUuid)};
-      
+
+      function getRecordType(record) {
+        if (!record) return "unknown";
+        try { return record.recordType(); } catch (e) {}
+        try { return record.type(); } catch (e) {}
+        return "unknown";
+      }
+
       try {
         let searchDatabase;
         
@@ -166,7 +174,7 @@ const lookupRecord = async (input: LookupRecordInput): Promise<LookupResult> => 
             name: record.name(),
             path: record.path(),
             location: record.location(),
-            recordType: record.recordType(),
+            recordType: getRecordType(record),
             kind: record.kind(),
             creationDate: record.creationDate() ? record.creationDate().toString() : null,
             modificationDate: record.modificationDate() ? record.modificationDate().toString() : null,

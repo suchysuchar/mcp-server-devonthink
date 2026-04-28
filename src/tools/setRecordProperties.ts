@@ -4,6 +4,7 @@ import { Tool, ToolSchema } from "@modelcontextprotocol/sdk/types.js";
 import { executeJxa } from "../applescript/execute.js";
 import { escapeStringForJXA, isJXASafeString } from "../utils/escapeString.js";
 import { getRecordLookupHelpers, getDatabaseHelper } from "../utils/jxaHelpers.js";
+import { DEVONTHINK_APP_NAME } from "../utils/appConfig.js";
 
 const ToolInputSchema = ToolSchema.shape.inputSchema;
 type ToolInput = z.infer<typeof ToolInputSchema>;
@@ -86,7 +87,7 @@ const setRecordProperties = async (
 
 	const script = `
     (() => {
-      const theApp = Application("DEVONthink");
+      const theApp = Application("${DEVONTHINK_APP_NAME}");
       theApp.includeStandardAdditions = true;
 
       // Inject helper functions
@@ -158,7 +159,7 @@ const setRecordProperties = async (
 				? `
           (function(){
             try {
-              const rt = rec.recordType ? rec.recordType() : null;
+              const rt = getRecordType(rec);
               if (rt === "group" || rt === "smart group") {
                 if (rec.excludeFromTagging !== undefined) { setIfProvided("excludeFromTagging", ${excludeFromTagging}); }
                 else { skipped.push("excludeFromTagging: not available"); }
@@ -177,7 +178,7 @@ const setRecordProperties = async (
         res["success"] = true;
         try { res["uuid"] = rec.uuid(); } catch (e) {}
         try { res["name"] = rec.name(); } catch (e) {}
-        try { res["recordType"] = rec.recordType(); } catch (e) {}
+        try { res["recordType"] = getRecordType(rec); } catch (e) {}
         res["updated"] = updated;
         res["skipped"] = skipped;
         return JSON.stringify(res);

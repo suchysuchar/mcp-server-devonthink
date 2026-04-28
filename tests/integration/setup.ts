@@ -3,6 +3,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 import { writeTestContext, cleanupContextFile, type TestContext } from "./helpers.js";
+import { DEVONTHINK_APP_NAME } from "../../src/utils/appConfig.js";
 
 let ctx: TestContext;
 
@@ -36,10 +37,11 @@ export async function setup() {
 		error?: string;
 	}>(
 		`(() => {
-      const theApp = Application("DEVONthink");
+      const theApp = Application(${JSON.stringify(DEVONTHINK_APP_NAME)});
       theApp.includeStandardAdditions = true;
       try {
-        const db = theApp.createDatabase("${dbPath}");
+        const dbPath = ${JSON.stringify(dbPath)};
+        const db = theApp.createDatabase(dbPath);
         if (!db) throw new Error("Failed to create temp database");
         const r = {};
         r["success"] = true;
@@ -70,7 +72,7 @@ export async function teardown() {
 	try {
 		await executeJxa(
 			`(() => {
-        const theApp = Application("DEVONthink");
+        const theApp = Application(${JSON.stringify(DEVONTHINK_APP_NAME)});
         theApp.includeStandardAdditions = true;
         const databases = theApp.databases();
         for (let i = 0; i < databases.length; i++) {

@@ -4,6 +4,7 @@ import { Tool, ToolSchema } from "@modelcontextprotocol/sdk/types.js";
 import { executeJxa } from "../applescript/execute.js";
 import { escapeStringForJXA, formatValueForJXA, isJXASafeString } from "../utils/escapeString.js";
 import { getRecordLookupHelpers, getDatabaseHelper } from "../utils/jxaHelpers.js";
+import { DEVONTHINK_APP_NAME } from "../utils/appConfig.js";
 
 const ToolInputSchema = ToolSchema.shape.inputSchema;
 type ToolInput = z.infer<typeof ToolInputSchema>;
@@ -79,7 +80,7 @@ const getRecordByIdentifier = async (input: GetRecordByIdentifierInput): Promise
 
 	const script = `
     (() => {
-      const theApp = Application("DEVONthink");
+      const theApp = Application("${DEVONTHINK_APP_NAME}");
       theApp.includeStandardAdditions = true;
       const allowedDatabaseUuid = ${allowedDatabaseUuid ? `"${escapeStringForJXA(allowedDatabaseUuid)}"` : "null"};
 
@@ -203,7 +204,7 @@ const getRecordByIdentifier = async (input: GetRecordByIdentifierInput): Promise
         record["name"] = targetRecord.name();
         record["path"] = targetRecord.path();
         record["location"] = targetRecord.location();
-        record["recordType"] = targetRecord.recordType();
+        record["recordType"] = getRecordType(targetRecord);
         record["kind"] = targetRecord.kind();
         record["database"] = targetDatabase.name();
         record["referenceURL"] = targetRecord.referenceURL();
@@ -211,7 +212,6 @@ const getRecordByIdentifier = async (input: GetRecordByIdentifierInput): Promise
         record["modificationDate"] = targetRecord.modificationDate() ? targetRecord.modificationDate().toString() : null;
         record["tags"] = targetRecord.tags();
         record["size"] = targetRecord.size();
-
         // Add optional properties if available
         try {
           const recordUrl = targetRecord.url();

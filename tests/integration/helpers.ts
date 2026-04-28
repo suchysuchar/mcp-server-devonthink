@@ -2,6 +2,7 @@ import { executeJxa } from "../../src/applescript/execute.js";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
+import { DEVONTHINK_APP_NAME } from "../../src/utils/appConfig.js";
 
 export interface TestContext {
 	dbPath: string;
@@ -35,7 +36,7 @@ export function cleanupContextFile(): void {
 
 export async function jxa<T>(script: string): Promise<T> {
 	return executeJxa<T>(`(() => {
-    const theApp = Application("DEVONthink");
+    const theApp = Application(${JSON.stringify(DEVONTHINK_APP_NAME)});
     theApp.includeStandardAdditions = true;
     try {
       ${script}
@@ -128,7 +129,8 @@ export async function createTemporaryDatabase(prefix: string): Promise<TempDatab
 		uuid?: string;
 		error?: string;
 	}>(`
-    const db = theApp.createDatabase(${JSON.stringify(dbPath)});
+    const dbPath = ${JSON.stringify(dbPath)};
+    const db = theApp.createDatabase(dbPath);
     if (!db) throw new Error("Failed to create temp database");
     const r = {};
     r["success"] = true;
