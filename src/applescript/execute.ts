@@ -8,20 +8,26 @@ export const executeJxa = <T>(script: string): Promise<T> => {
 					new McpError(ErrorCode.InternalError, `JXA execution failed: ${error.message}`),
 				);
 			}
-			if (stderr) {
+			const trimmedStdout = stdout.trim();
+			if (trimmedStdout) {
+				try {
+					const result = JSON.parse(trimmedStdout);
+					resolve(result as T);
+					return;
+				} catch (parseError) {
+					reject(
+						new McpError(
+							ErrorCode.InternalError,
+							`Failed to parse JXA output: ${parseError}`,
+						),
+					);
+					return;
+				}
+			}
+			if (stderr.trim()) {
 				return reject(new McpError(ErrorCode.InternalError, `JXA error: ${stderr}`));
 			}
-			try {
-				const result = JSON.parse(stdout.trim());
-				resolve(result as T);
-			} catch (parseError) {
-				reject(
-					new McpError(
-						ErrorCode.InternalError,
-						`Failed to parse JXA output: ${parseError}`,
-					),
-				);
-			}
+			reject(new McpError(ErrorCode.InternalError, "JXA returned no output."));
 		});
 	});
 };

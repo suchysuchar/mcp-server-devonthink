@@ -4,6 +4,7 @@ import { Tool, ToolSchema } from "@modelcontextprotocol/sdk/types.js";
 import { executeJxa } from "../applescript/execute.js";
 import { escapeStringForJXA, formatValueForJXA, isJXASafeString } from "../utils/escapeString.js";
 import { getRecordLookupHelpers, getDatabaseHelper, isGroupHelper } from "../utils/jxaHelpers.js";
+import { DEVONTHINK_APP_NAME } from "../utils/appConfig.js";
 
 const ToolInputSchema = ToolSchema.shape.inputSchema;
 type ToolInput = z.infer<typeof ToolInputSchema>;
@@ -82,7 +83,7 @@ const duplicateRecord = async (input: DuplicateRecordInput): Promise<DuplicateRe
 
 	const script = `
     (() => {
-      const theApp = Application("DEVONthink");
+      const theApp = Application("${DEVONTHINK_APP_NAME}");
       theApp.includeStandardAdditions = true;
       
       // Inject helper functions
@@ -137,7 +138,7 @@ const duplicateRecord = async (input: DuplicateRecordInput): Promise<DuplicateRe
         if (!isGroup(destinationGroup)) {
           return JSON.stringify({
             success: false,
-            error: "Destination UUID does not refer to a group. Type: " + destinationGroup.recordType()
+            error: "Destination UUID does not refer to a group. Type: " + getRecordType(destinationGroup)
           });
         }
         
@@ -171,7 +172,7 @@ const duplicateRecord = async (input: DuplicateRecordInput): Promise<DuplicateRe
         result["duplicatedRecord"]["name"] = duplicatedRecord.name();
         result["duplicatedRecord"]["path"] = duplicatedRecord.path();
         result["duplicatedRecord"]["location"] = duplicatedRecord.location();
-        result["duplicatedRecord"]["recordType"] = duplicatedRecord.recordType();
+        result["duplicatedRecord"]["recordType"] = getRecordType(duplicatedRecord);
         result["duplicatedRecord"]["databaseName"] = duplicatedRecord.database().name();
         
         return JSON.stringify(result);

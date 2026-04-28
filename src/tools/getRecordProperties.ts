@@ -4,6 +4,7 @@ import { Tool, ToolSchema } from "@modelcontextprotocol/sdk/types.js";
 import { executeJxa } from "../applescript/execute.js";
 import { escapeStringForJXA, formatValueForJXA, isJXASafeString } from "../utils/escapeString.js";
 import { getRecordLookupHelpers, getDatabaseHelper } from "../utils/jxaHelpers.js";
+import { DEVONTHINK_APP_NAME } from "../utils/appConfig.js";
 
 const ToolInputSchema = ToolSchema.shape.inputSchema;
 type ToolInput = z.infer<typeof ToolInputSchema>;
@@ -84,7 +85,7 @@ const getRecordProperties = async (input: GetRecordPropertiesInput): Promise<Rec
 
 	const script = `
     (() => {
-      const theApp = Application("DEVONthink");
+      const theApp = Application("${DEVONTHINK_APP_NAME}");
       theApp.includeStandardAdditions = true;
 
       // Inject helper functions
@@ -96,13 +97,12 @@ const getRecordProperties = async (input: GetRecordPropertiesInput): Promise<Rec
         const targetDatabase = getDatabase(theApp, ${databaseName ? `"${escapeStringForJXA(databaseName)}"` : "null"});
 
         // Build lookup options
-        const lookupOptions = {
-          uuid: ${uuid ? `"${escapeStringForJXA(uuid)}"` : "null"},
-          id: ${recordId !== undefined ? recordId : "null"},
-          path: ${recordPath ? `"${escapeStringForJXA(recordPath)}"` : "null"},
-          name: null,
-          database: targetDatabase
-        };
+        const lookupOptions = {};
+        lookupOptions["uuid"] = ${uuid ? `"${escapeStringForJXA(uuid)}"` : "null"};
+        lookupOptions["id"] = ${recordId !== undefined ? recordId : "null"};
+        lookupOptions["path"] = ${recordPath ? `"${escapeStringForJXA(recordPath)}"` : "null"};
+        lookupOptions["name"] = null;
+        lookupOptions["database"] = targetDatabase;
 
         // Use the unified lookup function
         const lookupResult = getRecord(theApp, lookupOptions);
@@ -126,31 +126,30 @@ const getRecordProperties = async (input: GetRecordPropertiesInput): Promise<Rec
 
         const targetRecord = lookupResult.record;
 
-        // Get all properties
-        const properties = {
-          success: true,
-          id: targetRecord.id(),
-          uuid: targetRecord.uuid(),
-          name: targetRecord.name(),
-          path: targetRecord.path(),
-          location: targetRecord.location(),
-          recordType: targetRecord.recordType(),
-          kind: targetRecord.kind(),
-          creationDate: targetRecord.creationDate() ? targetRecord.creationDate().toString() : null,
-          modificationDate: targetRecord.modificationDate() ? targetRecord.modificationDate().toString() : null,
-          additionDate: targetRecord.additionDate() ? targetRecord.additionDate().toString() : null,
-          size: targetRecord.size(),
-          tags: targetRecord.tags(),
-          comment: targetRecord.comment(),
-          url: targetRecord.url(),
-          rating: targetRecord.rating(),
-          label: targetRecord.label(),
-          flag: targetRecord.flag(),
-          unread: targetRecord.unread(),
-          locked: targetRecord.locking(),
-          wordCount: targetRecord.wordCount(),
-          characterCount: targetRecord.characterCount()
-        };
+        // Get all properties using bracket notation for DT3 compatibility
+        const properties = {};
+        properties["success"] = true;
+        properties["id"] = targetRecord.id();
+        properties["uuid"] = targetRecord.uuid();
+        properties["name"] = targetRecord.name();
+        properties["path"] = targetRecord.path();
+        properties["location"] = targetRecord.location();
+        properties["recordType"] = getRecordType(targetRecord);
+        try { properties["kind"] = targetRecord.kind(); } catch (e) {}
+        try { properties["creationDate"] = targetRecord.creationDate() ? targetRecord.creationDate().toString() : null; } catch (e) {}
+        try { properties["modificationDate"] = targetRecord.modificationDate() ? targetRecord.modificationDate().toString() : null; } catch (e) {}
+        try { properties["additionDate"] = targetRecord.additionDate() ? targetRecord.additionDate().toString() : null; } catch (e) {}
+        try { properties["size"] = targetRecord.size(); } catch (e) {}
+        try { properties["tags"] = targetRecord.tags(); } catch (e) {}
+        try { properties["comment"] = targetRecord.comment(); } catch (e) {}
+        try { properties["url"] = targetRecord.url(); } catch (e) {}
+        try { properties["rating"] = targetRecord.rating(); } catch (e) {}
+        try { properties["label"] = targetRecord.label(); } catch (e) {}
+        try { properties["flag"] = targetRecord.flag(); } catch (e) {}
+        try { properties["unread"] = targetRecord.unread(); } catch (e) {}
+        try { properties["locked"] = targetRecord.locking(); } catch (e) {}
+        try { properties["wordCount"] = targetRecord.wordCount(); } catch (e) {}
+        try { properties["characterCount"] = targetRecord.characterCount(); } catch (e) {}
 
         // Add optional exclusion flags if available on this record type
         try { if (targetRecord.excludeFromChat && targetRecord.excludeFromChat() !== undefined) { properties.excludeFromChat = targetRecord.excludeFromChat(); } } catch (e) {}
@@ -161,9 +160,9 @@ const getRecordProperties = async (input: GetRecordPropertiesInput): Promise<Rec
         try { if (targetRecord.excludeFromWikiLinking && targetRecord.excludeFromWikiLinking() !== undefined) { properties.excludeFromWikiLinking = targetRecord.excludeFromWikiLinking(); } } catch (e) {}
 
         // Only include plain text for text-based records and limit size
-        if (targetRecord.recordType() === "markdown" ||
-            targetRecord.recordType() === "formatted note" ||
-            targetRecord.recordType() === "txt") {
+        if (getRecordType(targetRecord) === "markdown" ||
+            getRecordType(targetRecord) === "formatted note" ||
+            getRecordType(targetRecord) === "txt") {
           const plainText = targetRecord.plainText();
           if (plainText && plainText.length > 0) {
             // Limit to first 1000 characters to avoid overwhelming responses

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { Tool, ToolSchema } from "@modelcontextprotocol/sdk/types.js";
 import { executeJxa } from "../applescript/execute.js";
+import { DEVONTHINK_APP_NAME } from "../utils/appConfig.js";
 
 const ToolInputSchema = ToolSchema.shape.inputSchema;
 type ToolInput = z.infer<typeof ToolInputSchema>;
@@ -56,9 +57,16 @@ const listGroupContent = async (input: ListGroupContentInput): Promise<ListGroup
 
 	const script = `
     (() => {
-      const theApp = Application("DEVONthink");
+      const theApp = Application("${DEVONTHINK_APP_NAME}");
       theApp.includeStandardAdditions = true;
-      
+
+      function getRecordType(record) {
+        if (!record) return "unknown";
+        try { return record.recordType(); } catch (e) {}
+        try { return record.type(); } catch (e) {}
+        return "unknown";
+      }
+
       try {
         ${getDatabaseJxa}
         ${getGroupJxa}
@@ -70,7 +78,7 @@ const listGroupContent = async (input: ListGroupContentInput): Promise<ListGroup
           });
         }
         
-        const type = group.recordType();
+        const type = getRecordType(group);
         if (type !== "group" && type !== "smart group") {
             return JSON.stringify({
                 success: false,
@@ -82,7 +90,7 @@ const listGroupContent = async (input: ListGroupContentInput): Promise<ListGroup
         const records = children.map(record => ({
           uuid: record.uuid(),
           name: record.name(),
-          recordType: record.recordType()
+          recordType: getRecordType(record)
         }));
         
         return JSON.stringify({

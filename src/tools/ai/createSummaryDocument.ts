@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { createDevonThinkTool } from "../base/DevonThinkTool.js";
+import { DEVONTHINK_APP_NAME } from "../../utils/appConfig.js";
 
 const CreateSummaryDocumentSchema = z
 	.object({
@@ -37,7 +38,7 @@ export const createSummaryDocumentTool = createDevonThinkTool({
 		const { documentUuids, summaryType, summaryStyle, parentGroupUuid, customTitle } = input;
 
 		return helpers.wrapInTryCatch(`
-      const theApp = Application("DEVONthink");
+      const theApp = Application("${DEVONTHINK_APP_NAME}");
       theApp.includeStandardAdditions = true;
       
       // Check if DEVONthink is running

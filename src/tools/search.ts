@@ -14,6 +14,7 @@ import {
 	isGroupHelper,
 	versionHelper,
 } from "../utils/jxaHelpers.js";
+import { DEVONTHINK_APP_NAME } from "../utils/appConfig.js";
 
 const ToolInputSchema = ToolSchema.shape.inputSchema;
 type ToolInput = z.infer<typeof ToolInputSchema>;
@@ -160,7 +161,7 @@ const search = async (input: SearchInput): Promise<SearchResult> => {
 
 	const script = `
     (() => {
-      const theApp = Application("DEVONthink");
+      const theApp = Application("${DEVONTHINK_APP_NAME}");
       theApp.includeStandardAdditions = true;
       
       // Inject helper functions
@@ -195,7 +196,7 @@ const search = async (input: SearchInput): Promise<SearchResult> => {
             return JSON.stringify({ success: false, error: "No group is currently selected in DEVONthink" });
           }
           if (!isGroup(searchScope)) {
-            return JSON.stringify({ success: false, error: "Current selection is not a group. Type: " + searchScope.recordType() });
+            return JSON.stringify({ success: false, error: "Current selection is not a group. Type: " + getRecordType(searchScope) });
           }
         } else if (pGroupUuid || pGroupId || pGroupPath) {
           
@@ -237,16 +238,15 @@ const search = async (input: SearchInput): Promise<SearchResult> => {
           try {
             const isGroupResult = isGroup(searchScope);
             if (!isGroupResult) {
-              const recordType = searchScope.recordType();
+              const recordType = getRecordType(searchScope);
               return JSON.stringify({ success: false, error: "Specified record is not a group. Type: " + recordType });
             }
           } catch (e) {
             return JSON.stringify({ success: false, error: "Error checking if record is a group: " + e.toString() });
           }
         } else if (targetDatabase) {
-          // User specified a database but no specific group
-          // DEVONthink 4.1+ requires using database.root() instead of the database object
-          searchScope = isVersion41OrLater(theApp) ? targetDatabase.root() : targetDatabase;
+          // Use database.root() as search scope (required by both DT3 and DT4)
+          searchScope = targetDatabase.root();
         } else {
           searchScope = null; // Search all databases
         }
@@ -278,7 +278,7 @@ const search = async (input: SearchInput): Promise<SearchResult> => {
         if (pRecordType) {
           filteredResults = searchResults.filter(record => {
             try {
-              return record.recordType() === pRecordType;
+              return getRecordType(record) === pRecordType;
             } catch (e) {
               return false;
             }
@@ -295,7 +295,7 @@ const search = async (input: SearchInput): Promise<SearchResult> => {
             result["name"] = record.name();
             result["path"] = record.path();
             result["location"] = record.location();
-            result["recordType"] = record.recordType();
+            result["recordType"] = getRecordType(record);
             result["kind"] = record.kind();
             result["creationDate"] = record.creationDate() ? record.creationDate().toString() : null;
             result["modificationDate"] = record.modificationDate() ? record.modificationDate().toString() : null;

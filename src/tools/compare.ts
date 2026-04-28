@@ -4,6 +4,7 @@ import { Tool, ToolSchema } from "@modelcontextprotocol/sdk/types.js";
 import { executeJxa } from "../applescript/execute.js";
 import { escapeStringForJXA, formatValueForJXA, isJXASafeString } from "../utils/escapeString.js";
 import { getRecordLookupHelpers, getDatabaseHelper } from "../utils/jxaHelpers.js";
+import { DEVONTHINK_APP_NAME } from "../utils/appConfig.js";
 
 const ToolInputSchema = ToolSchema.shape.inputSchema;
 type ToolInput = z.infer<typeof ToolInputSchema>;
@@ -87,7 +88,7 @@ const compare = async (input: CompareInput): Promise<CompareResult> => {
 
 	const script = `
     (() => {
-      const theApp = Application("DEVONthink");
+      const theApp = Application("${DEVONTHINK_APP_NAME}");
       theApp.includeStandardAdditions = true;
       
       // Inject helper functions
@@ -138,7 +139,7 @@ const compare = async (input: CompareInput): Promise<CompareResult> => {
           const record1 = {
             uuid: primaryRecord.uuid(),
             name: primaryRecord.name(),
-            recordType: primaryRecord.recordType(),
+            recordType: getRecordType(primaryRecord),
             tags: primaryRecord.tags(),
             size: primaryRecord.size()
           };
@@ -146,7 +147,7 @@ const compare = async (input: CompareInput): Promise<CompareResult> => {
           const record2 = {
             uuid: secondRecord.uuid(),
             name: secondRecord.name(),
-            recordType: secondRecord.recordType(),
+            recordType: getRecordType(secondRecord),
             tags: secondRecord.tags(),
             size: secondRecord.size()
           };
@@ -201,7 +202,7 @@ const compare = async (input: CompareInput): Promise<CompareResult> => {
               name: record.name(),
               path: record.path(),
               location: record.location(),
-              recordType: record.recordType(),
+              recordType: getRecordType(record),
               kind: record.kind(),
               creationDate: record.creationDate() ? record.creationDate().toString() : null,
               modificationDate: record.modificationDate() ? record.modificationDate().toString() : null,
