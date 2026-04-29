@@ -65,6 +65,7 @@ npm run build         # Verify the build works
   - **`duplicateRecord.ts`**: Duplicates records to any database (creates independent copies)
   - **`convertRecord.ts`**: Converts records to different formats
   - **`updateRecordContent.ts`**: Updates the content of existing records while preserving UUID
+  - **`setRecordProperties.ts`**: Sets record metadata and exclusion flags
   - **`ai/`**: AI-powered tools leveraging DEVONthink's native AI capabilities
     - **`askAiAboutDocuments.ts`**: Ask AI questions about specific documents for analysis
     - **`checkAIHealth.ts`**: Check AI service availability and configuration
@@ -116,10 +117,11 @@ The MCP server currently provides the following tools:
 21. **`duplicate_record`** - Duplicate records to any database (creates independent copies)
 22. **`convert_record`** - Convert records to different formats (plain text, rich text, markdown, HTML, PDF, etc.)
 23. **`update_record_content`** - Update the content of existing records while preserving UUID and metadata
-24. **`ask_ai_about_documents`** - Ask AI questions about specific documents for analysis, comparison, or extraction
-25. **`check_ai_health`** - Check if DEVONthink's AI services are available and working properly
-26. **`create_summary_document`** - Create AI-generated summaries from multiple documents
-27. **`get_ai_tool_documentation`** - Get detailed documentation for AI tools including examples and use cases
+24. **`set_record_properties`** - Set record metadata and exclusion flags
+25. **`ask_ai_about_documents`** - Ask AI questions about specific documents for analysis, comparison, or extraction
+26. **`check_ai_health`** - Check if DEVONthink's AI services are available and working properly
+27. **`create_summary_document`** - Create AI-generated summaries from multiple documents
+28. **`get_ai_tool_documentation`** - Get detailed documentation for AI tools including examples and use cases
 
 ## Adding New Tools
 

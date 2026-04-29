@@ -142,7 +142,7 @@ function logGuardBlocked(toolName: string, reason: string, uuid?: string): void 
 
 function logGuardAllowed(toolName: string, uuid?: string): void {
 	const uuidPart = uuid ? ` | uuid: ${uuid}` : "";
-	console.log(`[GUARD] ${guardTimestamp()} | ALLOWED | ${toolName}${uuidPart}`);
+	console.error(`[GUARD] ${guardTimestamp()} | ALLOWED | ${toolName}${uuidPart}`);
 	writeAuditEvent("guard_allowed", {
 		tool: toolName,
 		uuid,

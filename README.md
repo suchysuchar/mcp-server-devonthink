@@ -16,7 +16,10 @@ This MCP server provides access to DEVONthink functionality via the Model Contex
 
 ## Tools
 
-### Core Tools
+This README lists the most common tools. See [CLAUDE.md](./CLAUDE.md) for the full
+tool inventory and development notes.
+
+### Common Tools
 
 1. `is_running`
 
@@ -89,13 +92,18 @@ This MCP server provides access to DEVONthink functionality via the Model Contex
     - Removes tags from a specific record
     - Input: record ID and tags
 
-15. `classify`
+15. `set_record_properties`
+
+    - Sets record metadata and exclusion flags
+    - Input: record identifier and properties to update
+
+16. `classify`
 
     - Gets classification proposals for a record using DEVONthink's AI
     - Input: record UUID, optional database name, comparison type, and tags option
     - Returns: Array of classification proposals (groups or tags) with scores
 
-16. `compare`
+17. `compare`
     - Compares records to find similarities (hybrid approach)
     - Input: primary record UUID, optional second record UUID, database name, and comparison type
     - Returns: Either similar records (single mode) or detailed comparison analysis (two-record mode)
@@ -195,3 +203,6 @@ Example entry:
 - Includes comprehensive tests using Vitest
 
 See [CLAUDE.md](./CLAUDE.md) for full documentation, tool development guidelines, and API reference.
+
+For the current Codex/DEVONthink 2 stabilization plan, see
+[docs/next-work-plan.md](./docs/next-work-plan.md).

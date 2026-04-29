@@ -19,8 +19,14 @@ Start with the safest profile:
 - `DEVONTHINK_ENABLE_AI_TOOLS=false`
 - `DEVONTHINK_ALLOWED_DATABASE_UUID=<test database UUID>`
 - `DEVONTHINK_AUDIT_LOG_FILE=<path to JSONL audit log>`
+- `DEVONTHINK_APP_NAME=<app name or .app path>` if you need a specific installed version
 
 Only relax permissions after verifying that the tools and audit log behave correctly.
+
+Local app naming note:
+- `/Applications/DEVONthink 2.app` is the newer DEVONthink app used by this Codex setup.
+- `/Applications/DEVONthink 3.app` is the older parallel install on this machine.
+- Do not infer product version from the bundle filename.
 
 ## 1. Build the server
 
@@ -129,6 +135,20 @@ tail -n 20 "$HOME/Library/Logs/devonthink-mcp.audit.jsonl" | jq .
 
 ## 7. Interpreting common problems
 
+### `Error: Brak parametru` during integration setup
+
+Meaning:
+- DEVONthink rejected a JXA command that was invoked through the Node runtime.
+
+Observed locally:
+- direct shell `osascript` calls can read the newer app at `/Applications/DEVONthink 2.app`
+- direct shell `osascript` can also run some commands through `Application("DEVONthink 2")`
+- the Node runtime used by the MCP server can fail on parameterized DEVONthink JXA commands with `Error: Brak parametru`
+
+Practical consequence:
+- `npm run test:integration` can fail before collecting tests because global setup creates a temporary database through Node/JXA
+- do not switch to `/Applications/DEVONthink 3.app` as a workaround; that targets the older parallel install
+
 ### `guard_blocked`
 
 Meaning:
@@ -188,3 +208,6 @@ codex mcp add devonthink-safe \
 If Codex does something odd and the chat does not clearly show the failure, the audit log is the first place to inspect.
 
 That is the main reason this fork now includes persistent audit logging.
+
+For the current stabilization plan and the next engineering steps, see
+[next-work-plan.md](./next-work-plan.md).
